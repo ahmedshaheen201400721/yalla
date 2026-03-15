@@ -1,0 +1,95 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+# env
+.env*
+*.lock
+package-lock.json
+*.iml
+*.bak
+*.tmp
+*.pid
+.python-version
+celerybeat-schedule
+celerybeat.pid
+celerybeat-schedule.db
+
+# cluade
+CLAUDE.md
+/claude/*
+/.claude/*
+
+
+# Django stuff:
+*.logs
+*.log
+db.sqlite3
+db.sqlite3-journal
+
+# Minimal Virtualenv
+.venv
+
+# Jetbrains
+.idea
+.cursorrules
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Frontend (React/Vite)
+node_modules
+/dist/
+dist-ssr
+dist
+!modules/webbot/static/webbot/dist/
+*.local
+/.vite/
+/.cache/
+/coverage/
+/build/
+/out-tsc/
+*.tsbuildinfo
+
+
+# Testing
+/coverage/
+/htmlcov/
+.pytest_cache/
+junit.xml
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# langchain
+**/langgraph_api/
+
+
+
+media/*
+staticfiles/*
+Operations_Room.txt
+propmpt.txt
+poetry.lock.backup
+yalla_demo

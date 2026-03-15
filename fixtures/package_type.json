@@ -1,0 +1,22 @@
+[
+    {
+        "model": "tourism.packagetype",
+        "pk": 1,
+        "fields": {
+            "name": "HM",
+            "sequence": 1,
+            "color": "#000000",
+            "updated_at": "2026-02-26T06:50:16.062Z"
+        }
+    },
+    {
+        "model": "tourism.packagetype",
+        "pk": 2,
+        "fields": {
+            "name": "LM",
+            "sequence": 2,
+            "color": "#000000",
+            "updated_at": "2026-02-26T06:50:16.062Z"
+        }
+    }
+]
