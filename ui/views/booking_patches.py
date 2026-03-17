@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Yalla Thailand - Tour Booking Form Patch
-Adds available_trip field after the package field.
+Adds available_trips field after the package field.
 """
 from django.utils.translation import gettext as _
 
@@ -14,22 +14,19 @@ tourism_booking_form_yalla_patch = {
     "priority": 20,
     "inherit_mode": "extension",
     "inherit_id": "tourism_booking_form",
-    "module": "yalla_thailand",
+    "module": "tourism",
     "inheritance_operations": [
         {
-            "operation": "insert",
-            "target": "sheet.sections.0.groups.0.fields",
-            "index": 2,
-            "content": [
-                {
-                    "name": "available_trip",
-                    "string": _("Available Trip"),
-                    "widget": "relation",
-                    "displayField": "name",
-                    "multiSelect": False,
-                    "onChange": True,
-                }
-            ]
+            "operation": "after",
+            "target": "field[name=package]",
+            "content": {
+                "name": "available_trips",
+                "string": _("Available Trips"),
+                "widget": "relation",
+                "displayField": "name",
+                "multiSelect": True,
+                "onChange": True,
+            }
         }
     ]
 }

@@ -332,29 +332,28 @@ class PurchaseOrderYallaExtension(ModelExtension):
 
 class TourBookingYallaExtension(ModelExtension):
     """
-    Extend TourBooking with available_trip FK.
-    Selecting a trip auto-populates the Programs tab.
+    Extend TourBooking with available_trips M2M.
+    Selecting trips auto-populates the Programs tab (one program per trip).
     """
     _inherit = 'tourism.tourbooking'
     _depends = ['tourism', 'yalla_thailand']
 
-    available_trip = models.ForeignKey(
+    available_trips = models.ManyToManyField(
         'yalla_thailand.AvailableTrip',
-        on_delete=models.SET_NULL,
-        null=True,
         blank=True,
         related_name='tour_bookings',
-        verbose_name=_("Available Trip"),
-        help_text=_("Select a trip to auto-populate the programs tab")
+        verbose_name=_("Available Trips"),
+        help_text=_("Select trips to auto-populate the programs tab")
     )
 
-    @onchange('available_trip')
-    def _onchange_available_trip(self):
-        if not self.available_trip:
+    @onchange('available_trips')
+    def _onchange_available_trips(self):
+        
+        trips = self.available_trips
+        if not trips:
             return
 
-        trip = self.available_trip
-        from datetime import datetime
+        from datetime import datetime, timedelta
         from django.utils import timezone
 
         booking_start = self.start_date
@@ -364,41 +363,42 @@ class TourBookingYallaExtension(ModelExtension):
         else:
             booking_start = timezone.now().date()
 
-        program_entry = {
-            'day_number': 1,
-            'program_date': booking_start.isoformat(),
-            'title': trip.name,
-            'description': trip.note or '',
-            'breakfast': False,
-            'lunch': False,
-            'dinner': False,
-            'price_per_person': float(trip.sell_prc_adult or 0),
-            'cost_price': float(trip.net_prc_adult or 0),
-            'notes': '',
-        }
-        if trip.supplier:
-            program_entry['supplier'] = {'id': trip.supplier.id, 'name': trip.supplier.name}
-
         if self.pk:
             from modules.tourism.models import TourProgram
             self.programs.all().delete()
-            TourProgram.objects.create(
-                booking=self,
-                day_number=1,
-                program_date=booking_start,
-                title=trip.name,
-                description=trip.note or '',
-                breakfast=False,
-                lunch=False,
-                dinner=False,
-                price_per_person=trip.sell_prc_adult or 0,
-                cost_price=trip.net_prc_adult or 0,
-                notes='',
-                supplier=trip.supplier,
-            )
+            for i, trip in enumerate(trips):
+                program_date = booking_start + timedelta(days=i)
+                TourProgram.objects.create(
+                    booking=self,
+                    day_number=i + 1,
+                    program_date=program_date,
+                    title=trip.name,
+                    description=trip.note or '',
+                    breakfast=False, lunch=False, dinner=False,
+                    price_per_person=trip.sell_prc_adult or 0,
+                    cost_price=trip.net_prc_adult or 0,
+                    notes='',
+                    supplier=trip.supplier,
+                )
             self.compute_totals_from_bookings()
         else:
-            self.programs = [program_entry]
+            program_entries = []
+            for i, trip in enumerate(trips):
+                program_date = booking_start + timedelta(days=i)
+                entry = {
+                    'day_number': i + 1,
+                    'program_date': program_date.isoformat(),
+                    'title': trip.name,
+                    'description': trip.note or '',
+                    'breakfast': False, 'lunch': False, 'dinner': False,
+                    'price_per_person': float(trip.sell_prc_adult or 0),
+                    'cost_price': float(trip.net_prc_adult or 0),
+                    'notes': '',
+                }
+                if trip.supplier:
+                    entry['supplier'] = {'id': trip.supplier.id, 'name': trip.supplier.name}
+                program_entries.append(entry)
+            self.programs = program_entries
 
 
 class ConversationTourismExtension(ModelExtension):
@@ -423,3 +423,22 @@ class ConversationTourismExtension(ModelExtension):
                 'title': _('Available Trips')
             }
         }
+
+    def handle_adding_participant(self):
+        """
+        When a participant is added to a conversation, check if the social_partner
+        has any leads in stage 1 and advance them to stage 2.
+        """
+        partner = getattr(self, 'social_partner', None)
+        if not partner:
+            return
+
+        from modules.crm.models import Lead
+        lead = Lead.objects.filter(partner=partner, stage_id=1).order_by('-created_at').first()
+        if lead:
+            lead.stage_id = 2
+            lead.save(update_fields=['stage_id'])
+            logger.info(
+                "handle_adding_participant: moved lead %s for partner %s from stage 1 to stage 2",
+                lead.id, partner.id
+            )
