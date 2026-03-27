@@ -349,7 +349,7 @@ class TourBookingYallaExtension(ModelExtension):
     @onchange('available_trips')
     def _onchange_available_trips(self):
         
-        trips = self.available_trips
+        trips = self.available_trips.all() if self.pk else self.available_trips
         if not trips:
             return
 
