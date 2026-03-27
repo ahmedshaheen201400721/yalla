@@ -369,7 +369,7 @@ class TourBookingYallaExtension(ModelExtension):
             for i, trip in enumerate(trips):
                 program_date = booking_start + timedelta(days=i)
                 TourProgram.objects.create(
-                    booking=self,
+                    booking_id=self.pk,
                     day_number=i + 1,
                     program_date=program_date,
                     title=trip.name,
