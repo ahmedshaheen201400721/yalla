@@ -12,6 +12,17 @@ menu_dict = {
         "sequence": 2,
         "view_types": "list,form,kanban",
         "parent_key":"tourism_config_menu",
+        'actions' : [
+                     {
+                        "string": _("Send to WhatsApp"),
+                        "name": "send_catalog_link_to_whatsapp",
+                        "icon": "Send",
+                       "type": "server",
+                       "as": "button",
+                       "confirm_required": False,
+                    "view_type": ['kanban','list'],
+                    }
+        ],
     },
     
 }

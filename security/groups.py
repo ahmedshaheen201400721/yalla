@@ -8,16 +8,21 @@ Groups are synced to the database using the sync_groups management command.
 
 GROUPS = [
     {
-        'name': 'Yalla_thailand Users',
-        'technical_name': 'yalla_thailand.users',
+        'name': 'Yalla_thailand Hotels',
+        'technical_name': 'yalla_thailand.hotels',
         'category': 'Yalla_thailand',
-        'description': 'Access yalla_thailand module',
+        'description': 'Manage all yalla_thailand hotels',
     },
     {
-        'name': 'Yalla_thailand Admins',
-        'technical_name': 'yalla_thailand.admins',
+        'name': 'Yalla_thailand transport',
+        'technical_name': 'yalla_thailand.transport',
         'category': 'Yalla_thailand',
-        'implied_groups': ['yalla_thailand.users'],
-        'description': 'Manage all yalla_thailand module',
+        'description': 'Manage all yalla_thailand transport',
+    },
+    {
+        'name': 'Yalla_thailand trips',
+        'technical_name': 'yalla_thailand.trips',
+        'category': 'Yalla_thailand',
+        'description': 'Manage all yalla_thailand trips',
     }
 ]

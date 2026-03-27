@@ -411,18 +411,19 @@ class ConversationTourismExtension(ModelExtension):
 
     @action
     def get_trips_list(self):
-        """Open Yalla Thailand trips kanban from chat"""
-        return {
-            'status': True,
-            'open_mode': 'slideover',
-            'data': {
-                'menu_item_key': 'yalla_thailand_available_trips',
-                'view_type': 'kanban',
-                'context': {},
-                'type': 'action',
-                'title': _('Available Trips')
+        """Open Yalla Thailand trips kanban from chat, passing conversation context."""
+        for conversation in self:
+            return {
+                'status': True,
+                'open_mode': 'slideover',
+                'data': {
+                    'menu_item_key': 'yalla_thailand_available_trips',
+                    'view_type': 'kanban',
+                    'context': {'conversation_id': str(conversation.id)},
+                    'type': 'action',
+                    'title': _('Available Trips'),
+                },
             }
-        }
 
     def handle_adding_participant(self):
         """

@@ -3,6 +3,7 @@ from django.db import models
 from django.utils.translation import gettext as _
 from modules.base.models.base import BaseModel
 from modules.base.fields import AttachmentManyToManyField, AttachmentForeignKeyField
+from modules.base.decorators import action
 
 
 
@@ -483,3 +484,58 @@ class AvailableTrip(BaseModel):
 
     def __str__(self):
         return self.name
+
+    @action
+    def send_catalog_link_to_whatsapp(self, context: dict = None):
+        """Send trip's WhatsApp catalog link to the active conversation."""
+        conversation_id = (context or {}).get('conversation_id')
+        if not conversation_id:
+            return {
+                'status': False,
+                'open_mode': 'message',
+                'message': _('No conversation context. Open this from a chat conversation.'),
+            }
+
+        from modules.chat.models import Conversation
+        for trip in self:
+            if not trip.whatsapp_catalog_link:
+                return {
+                    'status': False,
+                    'open_mode': 'message',
+                    'message': _('This trip has no WhatsApp catalog link.'),
+                }
+            try:
+                conversation = Conversation.objects.get(id=conversation_id)
+            except Conversation.DoesNotExist:
+                return {
+                    'status': False,
+                    'open_mode': 'message',
+                    'message': _('Conversation not found.'),
+                }
+
+            partner = conversation.social_partner
+            if not partner or not getattr(partner, 'whatsapp_account', None):
+                return {
+                    'status': False,
+                    'open_mode': 'message',
+                    'message': _('No WhatsApp account linked to this contact.'),
+                }
+
+            result = partner.whatsapp_account.service.send_and_broadcast(
+                partner=partner,
+                content=trip.whatsapp_catalog_link,
+                message_type='text',
+                preview_url=True,
+                conversation=conversation,
+            )
+            if result.get('success'):
+                return {
+                    'status': True,
+                    'open_mode': 'message',
+                    'message': _('Catalog link sent.'),
+                }
+            return {
+                'status': False,
+                'open_mode': 'message',
+                'message': result.get('error', _('Failed to send.')),
+            }

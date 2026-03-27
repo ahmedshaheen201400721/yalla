@@ -30,5 +30,18 @@ menu_dict = {
                 "match": {"name": "get_sales_orders"}
             },
         ]
+    },
+    "update_packages_action_allowed_groups": {
+        "_inherit": "chat_main_menu_omnichannel",
+        "inheritance_operations": [
+            {
+                "operation": "update",
+                "target": "actions",
+                "match": {"name": "get_packages_list"},
+                "content": {
+                    "allowed_groups": ["yalla_thailand.hotels"],
+                },
+            },
+        ]
     }
 }
