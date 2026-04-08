@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tour Voucher - {{ doc.voucher_number|safe_default('') }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 10mm 15mm;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 10pt;
+            color: #333;
+            line-height: 1.5;
+            margin: 0;
+            padding: 0;
+        }
+
+        .company-header {
+            text-align: left;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+        }
+
+        .company-header .logo-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 8px;
+        }
+
+        .company-header img {
+            max-height: 60px;
+            max-width: 80px;
+        }
+
+        .company-header .company-name {
+            font-size: 22pt;
+            font-weight: bold;
+            color: #1a365d;
+            font-family: 'Georgia', serif;
+            letter-spacing: 1px;
+        }
+
+        .company-header .company-details {
+            font-size: 8pt;
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .company-header .company-details strong {
+            font-size: 9pt;
+            color: #333;
+        }
+
+        /* Main voucher tables */
+        table.voucher-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 8px;
+        }
+
+        table.voucher-table td {
+            border: 1px solid #333;
+            padding: 8px 10px;
+            vertical-align: middle;
+        }
+
+        table.voucher-table .label {
+            color: #2563eb;
+            font-weight: bold;
+            font-size: 10pt;
+        }
+
+        table.voucher-table .value {
+            font-weight: bold;
+            font-size: 11pt;
+            color: #111;
+        }
+
+        table.voucher-table .value-large {
+            font-weight: bold;
+            font-size: 16pt;
+            color: #dc2626;
+            text-align: center;
+        }
+
+        .program-row td {
+            padding: 12px 10px;
+        }
+
+        .program-row .program-label {
+            color: #2563eb;
+            font-size: 10pt;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .program-row .program-value {
+            font-size: 13pt;
+            font-weight: bold;
+            color: #111;
+        }
+
+        .empty-row td {
+            height: 30px;
+        }
+
+        .remarks-title {
+            text-align: center;
+            color: #2563eb;
+            font-weight: bold;
+            font-size: 11pt;
+            padding: 10px 0 5px 0;
+        }
+
+        .remarks-box {
+            border: 1px solid #333;
+            min-height: 50px;
+            padding: 8px 10px;
+            margin-bottom: 15px;
+        }
+
+        /* Cancellation policy */
+        .cancellation {
+            direction: rtl;
+            text-align: right;
+            font-size: 10pt;
+            color: #333;
+            margin-top: 20px;
+            line-height: 2;
+        }
+
+        .cancellation .title {
+            font-weight: bold;
+            font-size: 11pt;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Company Header -->
+    <div class="company-header">
+        <div class="logo-title">
+            {% if company_logo_url %}
+            <img src="{{ company_logo_url }}" alt="{{ company.name|safe_default('') }}">
+            {% endif %}
+            <span class="company-name">{{ company.name|safe_default('') }}</span>
+        </div>
+        <div class="company-details">
+            {% if company %}
+            {% if company.name %}<strong>{{ company.name }}</strong><br>{% endif %}
+            {% if company.street %}{{ company.street }}<br>{% endif %}
+            {% if company.phone %}Tel : {{ company.phone }}{% endif %}
+            {% if company.email %}&nbsp;&nbsp;&nbsp;&nbsp;Email : {{ company.email }}{% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Row 1: Trip Date + Voucher Number -->
+    <table class="voucher-table">
+        <tr>
+            <td style="width: 60%;">
+                <span class="label">Trip Date</span>
+                <span class="value">{{ doc.program_date|format_date('%d.%m.%Y') }}</span>
+            </td>
+            <td style="width: 40%;">
+                <span class="value-large">{{ doc.voucher_number|safe_default('—') }}</span>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Row 2: Issue (Customer) + Adults + Child -->
+    <table class="voucher-table">
+        <tr>
+            <td style="width: 50%;">
+                <span class="label">Issue</span>
+                <span class="value">{{ doc.booking.partner.name|safe_default('') if doc.booking else '' }}</span>
+            </td>
+            <td style="width: 25%; text-align: center;">
+                <span class="label">Adults</span><br>
+                <span class="value">{{ doc.booking.adults_count|safe_default(0) if doc.booking else 0 }}</span>
+            </td>
+            <td style="width: 25%; text-align: center;">
+                <span class="label">Child.</span><br>
+                <span class="value">{{ doc.booking.children_count|safe_default(0) if doc.booking else 0 }}</span>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Row 3: Program + Supplier -->
+    <table class="voucher-table">
+        <tr class="program-row">
+            <td style="width: 60%; text-align: center;">
+                <span class="program-label">Program</span>
+                <span class="program-value">{{ doc.title|safe_default('') }}</span>
+            </td>
+            <td style="width: 40%;">
+                <span class="label">Supplier</span><br>
+                <span class="value">{{ doc.supplier.name|safe_default('') if doc.supplier else '' }}</span>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Spacer -->
+    <br>
+
+    <!-- Row 4: Hotel + Room -->
+    <table class="voucher-table">
+        <tr>
+            <td style="width: 70%;">
+                <span class="label">Hotel</span>
+                <span class="value">{{ doc.hotel.name|safe_default('') if doc.hotel else '' }}</span>
+            </td>
+            <td style="width: 30%;">
+                <span class="label">Room:</span>
+                <span class="value">{{ doc.room_num|safe_default('') }}</span>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Row 5: Pick Up Time + Confirmed by + Issued by + Issue date -->
+    <table class="voucher-table">
+        <tr>
+            <td style="width: 25%;">
+                <span class="label">Pick Up Time</span><br>
+                <span class="value">{% if doc.pickup_time %}{{ doc.pickup_time|format_datetime('%H:%M') }}{% endif %}</span>
+            </td>
+            <td style="width: 25%;">
+                <span class="label">Confirmed by</span><br>
+                <span class="value"></span>
+            </td>
+            <td style="width: 25%;">
+                <span class="label">Issued by</span><br>
+                <span class="value" style="color: #dc2626;">{% if doc.booking and doc.booking.agents.all() %}{{ doc.booking.agents.all()|first|attr('name') }}{% endif %}</span>
+            </td>
+            <td style="width: 25%;">
+                <span class="label">Issue date</span><br>
+                <span class="value">{{ today|format_date('%d.%m.%Y') }}</span>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Row 6: Empty + COT -->
+    <table class="voucher-table">
+        <tr class="empty-row">
+            <td style="width: 25%;"></td>
+            <td style="width: 25%;"></td>
+            <td style="width: 25%;"></td>
+            <td style="width: 25%; text-align: center;">
+                <span class="label">COT</span>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Remarks -->
+    <div class="remarks-title">Remarks</div>
+    <div class="remarks-box">
+        {{ doc.notes|safe_default('') }}
+    </div>
+
+    <!-- Cancellation Policy (Arabic) -->
+    <div class="cancellation">
+        <div class="title">سياسة الالغاء:</div>
+        الالغاء قبل 24 ساعة من ميعاد الرحلة مجانا<br>
+        الالغاء من 12 ساعه الى 24 ساعة من ميعاد الرحلة يتم تحصيل 50 % من قيمة الرحلة<br>
+        الالغاء قبل اقل من 12 ساعه او عدم التواجد باللوبي بالميعاد المحدد يتم تحصيل قيمة الرحلة بالكامل
+    </div>
+</body>
+</html>

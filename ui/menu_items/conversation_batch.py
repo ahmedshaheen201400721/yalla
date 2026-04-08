@@ -9,7 +9,7 @@ menu_dict = {
                 "operation": "append",
                 "target": "actions",
                 "content": {
-                    "string": _("Trips"),
+                    "string": _("Tours"),
                     "icon": "Map",
                     "name": "get_trips_list",
                     "type": "server",

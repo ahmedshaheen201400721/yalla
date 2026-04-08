@@ -11,11 +11,11 @@ from django.utils.translation import gettext as _
 # =============================================================================
 available_trip_list_view = {
     "key": "yalla_available_trip_list",
-    "name": "Available Trips",
+    "name": "Available Tours",
     "model": "yalla_thailand.availabletrip",
     "view_type": "list",
     "module": "yalla_thailand",
-    "menu_item": "yalla_thailand_available_trips",
+    "menu_item": "yalla_thailand_available_tours",
     "priority": 10,
     "body": {
         "tree": {
@@ -45,7 +45,7 @@ available_trip_form_view = {
     "model": "yalla_thailand.availabletrip",
     "view_type": "form",
     "module": "yalla_thailand",
-    "menu_item": "yalla_thailand_available_trips",
+    "menu_item": "yalla_thailand_available_tours",
     "priority": 10,
     "body": {
         "sheet": {
@@ -56,7 +56,28 @@ available_trip_form_view = {
                         {
                             "fields": [
                                 {"name": "name","string": _("Name"),"widget": "text", "required": True},
-                                {"name": "supplier",      "widget": "relation", "string": _("Supplier"),"displayField": "name", "multiSelect": False},
+                                {
+                                    "name": "supplier",
+                                    "widget": "relation",
+                                    "string": _("Supplier"),
+                                    "displayField": "name",
+                                    "multiSelect": False,
+                                    "domain": {
+                                        "filters": {
+                                            "operator": "and",
+                                            "filters": [
+                                                {"field": "supplier", "operator": "eq", "value": True},
+                                                {"field": "active", "operator": "eq", "value": True}
+                                            ]
+                                        }
+                                    },
+                                    "context": {
+                                        "default_fields": {
+                                            "supplier": True,
+                                            "active": True
+                                        }
+                                    }
+                                },
                                 {"name": "destination",   "widget": "select",   "string": _("Destination")},
                                 {"name": "activity_type", "widget": "select",   "string": _("Act. Type")},
                                 {"name": "duration",      "widget": "select",   "string": _("Duration")},
@@ -194,7 +215,7 @@ available_trip_search_view = {
     "model": "yalla_thailand.availabletrip",
     "view_type": "search",
     "module": "yalla_thailand",
-    "menu_item": "yalla_thailand_available_trips",
+    "menu_item": "yalla_thailand_available_tours",
     "priority": 10,
     "body": {
         "search": {
@@ -236,16 +257,16 @@ available_trip_search_view = {
 # =============================================================================
 available_trip_kanban_view = {
     "key": "available_trip_kanban_view",
-    "name": _("Available Trips"),
+    "name": _("Available Tours"),
     "model": "yalla_thailand.availabletrip",
     "view_type": "kanban",
     "module": "yalla_thailand",
-    "menu_item": "yalla_thailand_available_trips",
+    "menu_item": "yalla_thailand_available_tours",
     "priority": 10,
     "body": {
         "kanban": {
             "id": "available-trip-kanban",
-            "name": _("Available Trips"),
+            "name": _("Available Tours"),
             "description": _("Trips grouped by destination"),
             "group_by": {"name": "destination", "tag": "field"},
             "card": {

@@ -231,29 +231,36 @@ class PartnerYallaExtension(ModelExtension):
     @action
     def action_supplier_settlement(self):
         """
-        Check unreconciled payable balance for this supplier
+        Check outstanding payable balance for this supplier
         and open a pre-filled payment form to settle the net difference.
+        Uses Move.amount_residual to correctly handle partially-paid bills.
         """
-        from modules.account.models import MoveLine
+        from modules.account.models import Move
 
         partners = self if hasattr(self, '__iter__') else [self]
         for partner in partners:
-            # Query all unreconciled lines on payable accounts for this partner
-            payable_lines = MoveLine.objects.filter(
+            # Sum outstanding amounts on vendor bills (what we owe supplier)
+            vendor_bills = Move.objects.filter(
                 partner=partner,
-                account__account_type='liability_payable',
-                move__state='posted',
-                reconciled=False,
-            )
+                move_type='in_invoice',
+                state='posted',
+            ).exclude(payment_state='paid')
+            total_bills = sum(
+                m.amount_residual for m in vendor_bills
+            ) or Decimal('0.00')
 
-            total_debit = payable_lines.aggregate(
-                total=models.Sum('debit')
-            )['total'] or Decimal('0.00')
-            total_credit = payable_lines.aggregate(
-                total=models.Sum('credit')
-            )['total'] or Decimal('0.00')
+            # Sum outstanding amounts on vendor credit notes (supplier owes us)
+            vendor_credits = Move.objects.filter(
+                partner=partner,
+                move_type='in_refund',
+                state='posted',
+            ).exclude(payment_state='paid')
+            total_credits = sum(
+                m.amount_residual for m in vendor_credits
+            ) or Decimal('0.00')
 
-            net = total_debit - total_credit
+            # positive = we owe supplier, negative = supplier owes us
+            net = total_bills - total_credits
 
             if abs(net) < Decimal('0.01'):
                 return {
@@ -265,14 +272,14 @@ class PartnerYallaExtension(ModelExtension):
                 }
 
             if net > 0:
-                # Supplier owes us → inbound payment
-                payment_type = 'inbound'
-                menu_key = 'account_customer_payments'
-                abs_amount = float(net)
-            else:
                 # We owe supplier → outbound payment
                 payment_type = 'outbound'
                 menu_key = 'account_vendor_payments'
+                abs_amount = float(net)
+            else:
+                # Supplier owes us → inbound payment
+                payment_type = 'inbound'
+                menu_key = 'account_customer_payments'
                 abs_amount = float(abs(net))
 
             return {
@@ -336,7 +343,7 @@ class TourBookingYallaExtension(ModelExtension):
     Selecting trips auto-populates the Programs tab (one program per trip).
     """
     _inherit = 'tourism.tourbooking'
-    _depends = ['tourism', 'yalla_thailand']
+    _depends = ['tourism', 'yalla_thailand', 'payment_omise']
 
     available_trips = models.ManyToManyField(
         'yalla_thailand.AvailableTrip',
@@ -348,9 +355,10 @@ class TourBookingYallaExtension(ModelExtension):
 
     @onchange('available_trips')
     def _onchange_available_trips(self):
-        
-        trips = self.available_trips.all() if self.pk else self.available_trips
+        raw_trips = self.available_trips
+        trips = raw_trips.all() if hasattr(raw_trips, 'all') else raw_trips
         if not trips:
+            self.programs = []
             return
 
         from datetime import datetime, timedelta
@@ -363,42 +371,231 @@ class TourBookingYallaExtension(ModelExtension):
         else:
             booking_start = timezone.now().date()
 
-        if self.pk:
-            from modules.tourism.models import TourProgram
-            self.programs.all().delete()
-            for i, trip in enumerate(trips):
-                program_date = booking_start + timedelta(days=i)
-                TourProgram.objects.create(
-                    booking_id=self.pk,
-                    day_number=i + 1,
-                    program_date=program_date,
-                    title=trip.name,
-                    description=trip.note or '',
-                    breakfast=False, lunch=False, dinner=False,
-                    price_per_person=trip.sell_prc_adult or 0,
-                    cost_price=trip.net_prc_adult or 0,
-                    notes='',
-                    supplier=trip.supplier,
+        program_entries = []
+        for i, trip in enumerate(trips):
+            program_date = booking_start + timedelta(days=i)
+            entry = {
+                'day_number': i + 1,
+                'program_date': program_date.isoformat(),
+                'title': trip.name,
+                'description': trip.note or '',
+                'breakfast': False, 'lunch': False, 'dinner': False,
+                'price_per_person': float(trip.sell_prc_adult or 0),
+                'cost_price': float(trip.net_prc_adult or 0),
+                'child_price': float(trip.sell_prc_child or 0),
+                'child_cost': float(trip.net_prc_child or 0),
+                'markup': float(trip.min_markup or 0),
+                'actual_adult_price': float(trip.sell_prc_adult or 0),
+                'actual_child_price': float(trip.sell_prc_child or 0),
+                'notes': '',
+            }
+            if trip.supplier:
+                entry['supplier'] = {'id': trip.supplier.id, 'name': trip.supplier.name}
+            program_entries.append(entry)
+        self.programs = program_entries
+
+    @action
+    def send_omise_payment_link(self):
+        """Queue Omise payment link sends for each booking's sale order
+        via WhatsApp / Messenger / Instagram."""
+        from modules.payment_omise.tasks import send_omise_payment_link_task
+
+        bookings = self if hasattr(self, '__iter__') else [self]
+        queued = 0
+        errors = []
+        user_id = None
+
+        first = next(iter(bookings), None)
+        if first and hasattr(first, 'env') and first.env.user:
+            user_id = first.env.user.id
+
+        for booking in bookings:
+            order = getattr(booking, 'sale_order', None)
+            if not order:
+                errors.append(
+                    _("Booking %(name)s: no sale order linked") % {'name': booking.name}
                 )
-            self.compute_totals_from_bookings()
+                continue
+            partner = order.partner or getattr(booking, 'partner', None)
+            if not partner:
+                errors.append(
+                    _("Booking %(name)s: no partner") % {'name': booking.name}
+                )
+                continue
+            if not (
+                getattr(partner, 'whatsapp_account', None)
+                or getattr(partner, 'facebook_page', None)
+                or getattr(partner, 'instagram_account', None)
+            ):
+                errors.append(
+                    _("Booking %(name)s: %(partner)s has no WhatsApp / Messenger / Instagram") % {
+                        'name': booking.name, 'partner': partner.name
+                    }
+                )
+                continue
+
+            send_omise_payment_link_task.delay(order.id, user_id)
+            queued += 1
+
+        if errors:
+            message = _("Queued %(n)s payment link(s). Errors: %(e)s") % {
+                'n': queued, 'e': '; '.join(errors)
+            }
+            stat = queued > 0
         else:
-            program_entries = []
-            for i, trip in enumerate(trips):
-                program_date = booking_start + timedelta(days=i)
-                entry = {
-                    'day_number': i + 1,
-                    'program_date': program_date.isoformat(),
-                    'title': trip.name,
-                    'description': trip.note or '',
-                    'breakfast': False, 'lunch': False, 'dinner': False,
-                    'price_per_person': float(trip.sell_prc_adult or 0),
-                    'cost_price': float(trip.net_prc_adult or 0),
-                    'notes': '',
+            message = _("Queued %(n)s payment link(s) for sending") % {'n': queued}
+            stat = True
+
+        return {
+            'status': stat,
+            'open_mode': 'message',
+            'message': message,
+            'data': {'queued': queued, 'errors': errors},
+        }
+
+
+class TourProgramYallaExtension(ModelExtension):
+    """
+    Extend TourProgram with pickup_time, hotel, room_num,
+    and actual pricing fields for agents.
+    """
+    _inherit = 'tourism.tourprogram'
+
+    pickup_time = models.DateTimeField(
+        _("Pickup Time"),
+        blank=True,
+        null=True,
+        help_text=_("Pickup time for this program day")
+    )
+
+    hotel = models.ForeignKey(
+        'base.Partner',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='tour_programs_hotel',
+        verbose_name=_("Hotel"),
+        help_text=_("Hotel for this program day")
+    )
+
+    room_num = models.CharField(
+        _("Room Number"),
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text=_("Room number at the hotel")
+    )
+
+    voucher_number = models.CharField(
+        _("Voucher Number"),
+        max_length=64,
+        blank=True,
+        null=True,
+        help_text=_("Auto-generated voucher number")
+    )
+
+    actual_adult_price = models.DecimalField(
+        _("Actual Adult Price"),
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        null=True,
+        blank=True,
+        help_text=_("Agent's actual adult selling price")
+    )
+
+    actual_child_price = models.DecimalField(
+        _("Actual Child Price"),
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        null=True,
+        blank=True,
+        help_text=_("Agent's actual child selling price")
+    )
+
+    @onchange('price_per_person')
+    def _validate_price_per_person_floor(self):
+        """Reject adult selling price below cost + markup; snap to floor."""
+        cost = self.cost_price
+        markup = self.markup
+        actual = self.price_per_person
+
+        if isinstance(cost, str):
+            cost = Decimal(cost) if cost else Decimal('0.00')
+        if isinstance(markup, str):
+            markup = Decimal(markup) if markup else Decimal('0.00')
+        if isinstance(actual, str):
+            actual = Decimal(actual) if actual else Decimal('0.00')
+
+        cost = cost or Decimal('0.00')
+        markup = markup or Decimal('0.00')
+        actual = actual or Decimal('0.00')
+
+        min_allowed = cost + markup
+        if actual and actual < min_allowed:
+            return {
+                'value': {'price_per_person': float(min_allowed)},
+                'warning': {
+                    'title': 'Error',
+                    'message': _(
+                        'Adult Price (%(actual)s) cannot be lower than '
+                        'cost + markup (%(min)s). Resetting to minimum.'
+                    ) % {'actual': actual, 'min': min_allowed}
                 }
-                if trip.supplier:
-                    entry['supplier'] = {'id': trip.supplier.id, 'name': trip.supplier.name}
-                program_entries.append(entry)
-            self.programs = program_entries
+            }
+
+    @onchange('child_price')
+    def _validate_child_price_floor(self):
+        """Reject child selling price below child_cost + markup; snap to floor."""
+        cost = self.child_cost
+        markup = self.markup
+        actual = self.child_price
+
+        if isinstance(cost, str):
+            cost = Decimal(cost) if cost else Decimal('0.00')
+        if isinstance(markup, str):
+            markup = Decimal(markup) if markup else Decimal('0.00')
+        if isinstance(actual, str):
+            actual = Decimal(actual) if actual else Decimal('0.00')
+
+        cost = cost or Decimal('0.00')
+        markup = markup or Decimal('0.00')
+        actual = actual or Decimal('0.00')
+
+        min_allowed = cost + markup
+        if actual and actual < min_allowed:
+            return {
+                'value': {'child_price': float(min_allowed)},
+                'warning': {
+                    'title': 'Error',
+                    'message': _(
+                        'Child Price (%(actual)s) cannot be lower than '
+                        'child cost + markup (%(min)s). Resetting to minimum.'
+                    ) % {'actual': actual, 'min': min_allowed}
+                }
+            }
+
+    def pre_create(self):
+        """Auto-generate voucher number on creation."""
+        if not self.voucher_number:
+            from modules.base.models import Sequence
+            try:
+                self.voucher_number = Sequence.get_next_by_code('tourism.voucher')
+            except Exception:
+                pass
+
+    @action
+    def action_print_voucher(self):
+        """Print tour program voucher as PDF."""
+        from modules.base.services.report_service import report_service
+
+        for program in self:
+            return report_service.generate_report(
+                report_name='tourism.report_program_voucher',
+                record_ids=[program.id],
+                user=program.env.user if hasattr(program, 'env') else None
+            )
 
 
 class ConversationTourismExtension(ModelExtension):
@@ -417,7 +614,7 @@ class ConversationTourismExtension(ModelExtension):
                 'status': True,
                 'open_mode': 'slideover',
                 'data': {
-                    'menu_item_key': 'yalla_thailand_available_trips',
+                    'menu_item_key': 'yalla_thailand_available_tours',
                     'view_type': 'kanban',
                     'context': {'conversation_id': str(conversation.id)},
                     'type': 'action',

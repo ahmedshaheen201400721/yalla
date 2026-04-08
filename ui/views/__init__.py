@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Yalla Thailand UI views package"""
 
-from .available_trip_views import (
+from .available_tours_views import (
     available_trip_list_view,
     available_trip_form_view,
     available_trip_search_view,
@@ -35,6 +35,19 @@ from .booking_patches import (
     tourism_booking_form_yalla_patch,
 )
 
+from .activity_batch_views import (
+    activity_form_yalla_thailand_batch,
+)
+
+from .lead_batch_views import (
+    lead_form_yalla_thailand_batch,
+)
+
+from .program_patches import (
+    tourprogram_booking_form_yalla_batch,
+    tourprogram_form_yalla_batch,
+)
+
 __all__ = [
     # AvailableTrip standalone views
     'available_trip_list_view',
@@ -65,4 +78,14 @@ __all__ = [
 
     # Tour Booking - available trip patch
     'tourism_booking_form_yalla_patch',
+
+    # Activity form - group restriction patch
+    'activity_form_yalla_thailand_batch',
+
+    # CRM Lead form - remove sales order button
+    'lead_form_yalla_thailand_batch',
+
+    # Tour Program - pickup/hotel/room patches
+    'tourprogram_booking_form_yalla_batch',
+    'tourprogram_form_yalla_batch',
 ]

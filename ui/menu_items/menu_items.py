@@ -4,8 +4,8 @@ from django.utils.translation import gettext as _
 
 
 menu_dict = {
-    "yalla_thailand_available_trips": {
-        "name": _("Trips"),
+    "yalla_thailand_available_tours": {
+        "name": _("Tours"),
         "icon": "Map",
         "module": "tourism",
         "model": "yalla_thailand.availabletrip",

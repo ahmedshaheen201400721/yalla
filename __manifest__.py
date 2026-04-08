@@ -20,6 +20,7 @@ with package type fields and localized attachment fields.
         'account',
         'sales',
         'purchase',
-        'whatsapp'
+        'whatsapp',
+        'payment_omise',
     ],
 }

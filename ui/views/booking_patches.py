@@ -21,11 +21,32 @@ tourism_booking_form_yalla_patch = {
             "target": "field[name=package]",
             "content": {
                 "name": "available_trips",
-                "string": _("Available Trips"),
+                "string": _("Available Tours"),
                 "widget": "relation",
                 "displayField": "name",
                 "multiSelect": True,
                 "onChange": True,
+            }
+        },
+        {
+            "operation": "modify",
+            "target": "field[name=supplier]",
+            "content": {
+                "allowed_groups": ["yalla_thailand.hotels", "yalla_thailand.transport"]
+            }
+        },
+        {
+            "operation": "append",
+            "target": "header.actions",
+            "content": {
+                    "string": _("Send Payment Link"),
+                    "icon": "CreditCard",
+                    "name": "send_omise_payment_link",
+                    "type": "server",
+                    "as": "button",
+                    "variant": "primary",
+                    "confirm_required": False,
+                    "invisible": {"field": "sale_order", "operator": "eq", "value": None},
             }
         }
     ]
