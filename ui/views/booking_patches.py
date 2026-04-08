@@ -46,7 +46,7 @@ tourism_booking_form_yalla_patch = {
                     "as": "button",
                     "variant": "primary",
                     "confirm_required": False,
-                    "invisible": {"field": "sale_order", "operator": "eq", "value": None},
+                    # "invisible": {"field": "sale_order", "operator": "eq", "value": None},
             }
         }
     ]
