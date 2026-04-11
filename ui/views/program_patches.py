@@ -41,6 +41,25 @@ tourprogram_booking_form_yalla_batch = {
             "target": "field[name=programs.hotel]",
             "content": {"name": "programs.room_num", "widget": "text", "string": _("Room #"), "onChange": True, "visible": True},
         },
+        # Remove base meal switches in inline programs
+        {
+            "operation": "remove",
+            "target": "field[name=programs.breakfast]",
+        },
+        {
+            "operation": "remove",
+            "target": "field[name=programs.lunch]",
+        },
+        {
+            "operation": "remove",
+            "target": "field[name=programs.dinner]",
+        },
+        # Add lunch_option select in inline programs
+        {
+            "operation": "after",
+            "target": "field[name=programs.room_num]",
+            "content": {"name": "programs.lunch_option", "widget": "select", "string": _("Lunch"), "onChange": True, "visible": True},
+        },
         # Actual pricing fields for agents
         {
             "operation": "after",
@@ -137,6 +156,25 @@ tourprogram_form_yalla_batch = {
             "operation": "modify",
             "target": "field[name=child_price]",
             "content": {"onChange": True},
+        },
+        # Remove base meal switches
+        {
+            "operation": "remove",
+            "target": "field[name=breakfast]",
+        },
+        {
+            "operation": "remove",
+            "target": "field[name=lunch]",
+        },
+        {
+            "operation": "remove",
+            "target": "field[name=dinner]",
+        },
+        # Add lunch_option select
+        {
+            "operation": "after",
+            "target": "field[name=notes]",
+            "content": {"name": "lunch_option", "widget": "select", "string": _("Lunch")},
         },
         # Restrict supplier/cost/markup fields to managers (agents edit Adult/Child Price only)
         {

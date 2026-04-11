@@ -36,10 +36,31 @@ tourism_booking_form_yalla_patch = {
             }
         },
         {
+            "operation": "modify",
+            "target": "field[name=start_date]",
+            "content": {
+                "edit_groups": ["tourism.managers", "yalla_thailand.hotels"]
+            }
+        },
+        {
+            "operation": "modify",
+            "target": "field[name=end_date]",
+            "content": {
+                "edit_groups": ["tourism.managers", "yalla_thailand.hotels"]
+            }
+        },
+        {
+            "operation": "modify",
+            "target": "field[name=package]",
+            "content": {
+                "edit_groups": ["tourism.managers", "yalla_thailand.hotels"]
+            }
+        },
+        {
             "operation": "append",
             "target": "header.actions",
             "content": {
-                    "string": _("Send Payment Link"),
+                    "string": _("Send Link"),
                     "icon": "CreditCard",
                     "name": "send_omise_payment_link",
                     "type": "server",
@@ -47,6 +68,33 @@ tourism_booking_form_yalla_patch = {
                     "variant": "primary",
                     "confirm_required": False,
                     # "invisible": {"field": "sale_order", "operator": "eq", "value": None},
+            }
+        },
+        {
+            "operation": "remove",
+            "target": "action[name=action_create_quotation]",
+        },
+        {
+            "operation": "remove",
+            "target": "action[name=action_create_purchase_order]",
+        },
+        {
+            "operation": "append",
+            "target": "header.actions",
+            "content": {
+                "string": _("Accountant"),
+                "icon": "FileStack",
+                "name": "action_create_so_and_pos",
+                "type": "server",
+                "as": "button",
+                "variant": "primary",
+                "confirm_required": False,
+                "invisible": {
+                    "or": [
+                        {"field": "sale_order", "operator": "is_not_null"},
+                        {"field": "state", "operator": "ne", "value": "confirmed"},
+                    ]
+                },
             }
         }
     ]

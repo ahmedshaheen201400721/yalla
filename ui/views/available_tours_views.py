@@ -30,6 +30,9 @@ available_trip_list_view = {
                 {"name": "price_range",    "widget": "select",   "string": _("Price Range"),  "width": 120},
                 {"name": "sell_prc_adult", "widget": "number",   "string": _("Sell Ad."),     "width": 100},
                 {"name": "net_prc_adult",  "widget": "number",   "string": _("Net Ad."),      "width": 100},
+                {"name": "sell_prc_child", "widget": "number",   "string": _("Sell PRC Ch."), "width": 100},
+                {"name": "net_prc_child",  "widget": "number",   "string": _("Net PRC Ch."),  "width": 100},
+                {"name": "min_markup",     "widget": "number",   "string": _("Min. Markup"),  "width": 100},
             ]
         }
     }
@@ -194,6 +197,28 @@ available_trip_form_view = {
                                         {"name": "video_en", "widget": "files", "string": _("Video (EN)"), "accept": "video/*"},
                                         {"name": "pics_ar",  "widget": "files", "string": _("Pictures (AR)"), "accept": "image/*"},
                                         {"name": "pics_en",  "widget": "files", "string": _("Pictures (EN)"), "accept": "image/*"},
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "title": _("Description"),
+                    "sections": [
+                        {
+                            "title": "",
+                            "groups": [
+                                {
+                                    "fullWidth": True,
+                                    "fields": [
+                                        {
+                                            "name": "description",
+                                            "string": "",
+                                            "widget": "editor",
+                                            "required": False,
+                                            "readonly": False,
+                                        },
                                     ]
                                 }
                             ]

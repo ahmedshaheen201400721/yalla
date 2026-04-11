@@ -378,8 +378,8 @@ class TourBookingYallaExtension(ModelExtension):
                 'day_number': i + 1,
                 'program_date': program_date.isoformat(),
                 'title': trip.name,
-                'description': trip.note or '',
-                'breakfast': False, 'lunch': False, 'dinner': False,
+                'description': trip.description or '',
+                'lunch_option': trip.lunch or '',
                 'price_per_person': float(trip.sell_prc_adult or 0),
                 'cost_price': float(trip.net_prc_adult or 0),
                 'child_price': float(trip.sell_prc_child or 0),
@@ -387,7 +387,7 @@ class TourBookingYallaExtension(ModelExtension):
                 'markup': float(trip.min_markup or 0),
                 'actual_adult_price': float(trip.sell_prc_adult or 0),
                 'actual_child_price': float(trip.sell_prc_child or 0),
-                'notes': '',
+                'notes': trip.note or '',
             }
             if trip.supplier:
                 entry['supplier'] = {'id': trip.supplier.id, 'name': trip.supplier.name}
@@ -453,6 +453,76 @@ class TourBookingYallaExtension(ModelExtension):
             'data': {'queued': queued, 'errors': errors},
         }
 
+    @action
+    def action_create_so_and_pos(self):
+        """Combined: create sales quotation and supplier POs in one click.
+
+        Reuses tourism.tourbooking.action_create_quotation and
+        action_create_purchase_order. Safe to re-run: existing SO is
+        reused, existing (booking, supplier) POs are skipped.
+        """
+        from modules.purchase.models import Order as PurchaseOrder
+
+        bookings = self if hasattr(self, '__iter__') else [self]
+        summaries = []
+        errors = []
+
+        for booking in bookings:
+            had_so = bool(booking.sale_order)
+            po_count_before = PurchaseOrder.objects.filter(tour_booking=booking).count()
+
+            try:
+                q_resp = booking.action_create_quotation()
+                if isinstance(q_resp, dict) and q_resp.get('status') is False:
+                    errors.append(_("%(name)s: %(msg)s") % {
+                        'name': booking.name,
+                        'msg': q_resp.get('message') or _('quotation failed'),
+                    })
+                    continue
+            except Exception as e:
+                errors.append(_("%(name)s: quotation error – %(err)s") % {
+                    'name': booking.name, 'err': str(e),
+                })
+                continue
+
+            if hasattr(booking, 'refresh_from_db'):
+                booking.refresh_from_db(fields=['sale_order'])
+
+            try:
+                p_resp = booking.action_create_purchase_order()
+                if isinstance(p_resp, dict) and p_resp.get('status') is False:
+                    errors.append(_("%(name)s PO: %(msg)s") % {
+                        'name': booking.name,
+                        'msg': p_resp.get('message') or _('no POs created'),
+                    })
+            except Exception as e:
+                errors.append(_("%(name)s: PO error – %(err)s") % {
+                    'name': booking.name, 'err': str(e),
+                })
+
+            po_count_after = PurchaseOrder.objects.filter(tour_booking=booking).count()
+            new_pos = po_count_after - po_count_before
+            so_name = booking.sale_order.name if booking.sale_order else '—'
+            so_label = _('reused') if had_so else _('created')
+            summaries.append(
+                _('%(b)s: SO %(so)s (%(state)s), %(n)s new PO(s)') % {
+                    'b': booking.name, 'so': so_name,
+                    'state': so_label, 'n': new_pos,
+                }
+            )
+
+        message = '\n'.join(summaries) if summaries else _('Nothing processed.')
+        if errors:
+            message = message + '\n' + _('Errors:') + ' ' + '; '.join(errors)
+
+        return {
+            'status': bool(summaries),
+            'open_mode': 'message',
+            'message': message,
+            'data': {},
+            'on_success': {'type': 'refresh'},
+        }
+
 
 class TourProgramYallaExtension(ModelExtension):
     """
@@ -512,6 +582,43 @@ class TourProgramYallaExtension(ModelExtension):
         null=True,
         blank=True,
         help_text=_("Agent's actual child selling price")
+    )
+    STOP_ACTIVITY_CHOICES = [
+        ('1', '1'),
+        ('2', '2'),
+        ('3', '3'),
+        ('4', '4'),
+        ('5', '5'),
+        ('6', '6'),
+        ('7', '7'),
+        ('8', '8'),
+        ('9', '9'),
+        ('9+', '9+'),
+        ('custom', 'Custom'),
+    ]
+    
+    stop_activity = models.CharField(
+        _("Stop/Activity"),
+        max_length=10,
+        choices=STOP_ACTIVITY_CHOICES,
+        null=True,
+        blank=True,
+    )
+
+    LUNCH_CHOICES = [
+        ('none', 'None'),
+        ('island', 'Island'),
+        ('onboard', 'Onboard'),
+        ('restaurant', 'Rest.'),
+        ('extra', 'Extra'),
+    ]
+
+    lunch_option = models.CharField(
+        _("Lunch"),
+        max_length=20,
+        choices=LUNCH_CHOICES,
+        null=True,
+        blank=True,
     )
 
     @onchange('price_per_person')

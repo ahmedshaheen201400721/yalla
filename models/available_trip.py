@@ -420,6 +420,11 @@ class AvailableTrip(BaseModel):
         null=True,
         blank=True,
     )
+    description = models.TextField(
+        _("Description"),
+        null=True,
+        blank=True,
+    )
 
     # --- Attachment fields (AR/EN) ---
     audio_ar = AttachmentManyToManyField(
