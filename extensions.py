@@ -704,6 +704,61 @@ class TourProgramYallaExtension(ModelExtension):
                 user=program.env.user if hasattr(program, 'env') else None
             )
 
+    @action
+    def action_send_voucher(self):
+        """Queue voucher sends for each program via WhatsApp / Messenger /
+        Instagram. Actual PDF generation and delivery run in a Celery task."""
+        from yalla_thailand.tasks import send_program_voucher_task
+
+        programs = self if hasattr(self, '__iter__') else [self]
+        queued = 0
+        errors = []
+        user_id = None
+
+        first = next(iter(programs), None)
+        if first is not None and hasattr(first, 'env') and first.env.user:
+            user_id = first.env.user.id
+
+        for program in programs:
+            booking = getattr(program, 'booking', None)
+            partner = getattr(booking, 'partner', None) if booking else None
+            if not partner:
+                errors.append(
+                    _("Program %(name)s: no booking partner") % {
+                        'name': program.title or program.voucher_number or program.id
+                    }
+                )
+                continue
+            if not (
+                getattr(partner, 'whatsapp_account', None)
+                or getattr(partner, 'facebook_page', None)
+                or getattr(partner, 'instagram_account', None)
+            ):
+                errors.append(
+                    _("Program %(name)s: %(partner)s has no WhatsApp / Messenger / Instagram") % {
+                        'name': program.title or program.voucher_number or program.id,
+                        'partner': partner.name,
+                    }
+                )
+                continue
+
+            send_program_voucher_task.delay(program.id, user_id)
+            queued += 1
+
+        if errors:
+            message = _("Queued %(n)s voucher(s). Errors: %(e)s") % {'n': queued, 'e': '; '.join(errors)}
+            status = queued > 0
+        else:
+            message = _("Queued %(n)s voucher(s) for sending") % {'n': queued}
+            status = True
+
+        return {
+            'status': status,
+            'open_mode': 'message',
+            'message': message,
+            'data': {'queued': queued, 'errors': errors},
+        }
+
 
 class ConversationTourismExtension(ModelExtension):
     """

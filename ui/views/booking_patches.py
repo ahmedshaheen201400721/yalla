@@ -56,28 +56,15 @@ tourism_booking_form_yalla_patch = {
                 "edit_groups": ["tourism.managers", "yalla_thailand.hotels"]
             }
         },
-        {
-            "operation": "append",
-            "target": "header.actions",
-            "content": {
-                    "string": _("Send Link"),
-                    "icon": "CreditCard",
-                    "name": "send_omise_payment_link",
-                    "type": "server",
-                    "as": "button",
-                    "variant": "primary",
-                    "confirm_required": False,
-                    # "invisible": {"field": "sale_order", "operator": "eq", "value": None},
-            }
-        },
-        {
-            "operation": "remove",
-            "target": "action[name=action_create_quotation]",
-        },
-        {
-            "operation": "remove",
-            "target": "action[name=action_create_purchase_order]",
-        },
+        # Remove base buttons that yalla reorganizes (re-appended below in the target order).
+        {"operation": "remove", "target": "action[name=action_create_quotation]"},
+        {"operation": "remove", "target": "action[name=action_create_purchase_order]"},
+        {"operation": "remove", "target": "action[name=action_print_customer_itinerary]"},
+        {"operation": "remove", "target": "action[name=action_confirm]"},
+        {"operation": "remove", "target": "action[name=action_send_customer_itinerary]"},
+        {"operation": "remove", "target": "action[name=action_cancel]"},
+        # Final header order after appends: Start, Done, Set to Draft, Refund, Accountant,
+        # Print (dropdown), Cancel, Send, Send Link, Confirm.
         {
             "operation": "append",
             "target": "header.actions",
@@ -96,6 +83,72 @@ tourism_booking_form_yalla_patch = {
                     ]
                 },
             }
-        }
+        },
+        {
+            "operation": "append",
+            "target": "header.actions",
+            "content": {
+                "string": _("Print"),
+                "icon": "Printer",
+                "name": "action_print_customer_itinerary",
+                "type": "server",
+                "as": "dropdown",
+                "confirm_required": False,
+                "invisible": {"field": "state", "operator": "in", "value": ["cancelled", "refunded"]},
+            }
+        },
+        {
+            "operation": "append",
+            "target": "header.actions",
+            "content": {
+                "string": _("Cancel"),
+                "icon": "X",
+                "name": "action_cancel",
+                "type": "server",
+                "as": "button",
+                "confirm_required": True,
+                "allowed_groups": ["tourism.managers"],
+                "invisible": {"field": "state", "operator": "not_in", "value": ["confirmed", "paid", "partially_paid", "ongoing"]},
+            }
+        },
+        {
+            "operation": "append",
+            "target": "header.actions",
+            "content": {
+                "string": _("Send"),
+                "icon": "Send",
+                "name": "action_send_customer_itinerary",
+                "type": "server",
+                "as": "button",
+                "confirm_required": False,
+                "invisible": {"field": "state", "operator": "in", "value": ["cancelled", "refunded"]},
+            }
+        },
+        {
+            "operation": "append",
+            "target": "header.actions",
+            "content": {
+                "string": _("Send Link"),
+                "icon": "CreditCard",
+                "name": "send_omise_payment_link",
+                "type": "server",
+                "as": "button",
+                "variant": "primary",
+                "confirm_required": False,
+            }
+        },
+        {
+            "operation": "append",
+            "target": "header.actions",
+            "content": {
+                "string": _("Confirm"),
+                "icon": "Check",
+                "name": "action_confirm",
+                "type": "server",
+                "as": "button",
+                "confirm_required": False,
+                "invisible": {"field": "state", "operator": "in", "value": ["confirmed", "paid", "partially_paid", "ongoing", "done", "cancelled", "refunded"]},
+            }
+        },
     ]
 }

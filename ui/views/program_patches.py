@@ -88,6 +88,20 @@ tourprogram_form_yalla_batch = {
     "inherit_id": "tourism_program_form",
     "module": "tourism",
     "inheritance_operations": [
+        # Send Voucher header action (appears before Print Voucher)
+        {
+            "operation": "append",
+            "target": "header.actions",
+            "content": {
+                "name": "action_send_voucher",
+                "type": "server",
+                "as": "button",
+                "string": _("Send Voucher"),
+                "icon": "Send",
+                "variant": "primary",
+                "confirm_required": False,
+            },
+        },
         # Print Voucher header action
         {
             "operation": "append",
